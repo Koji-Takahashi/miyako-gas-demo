@@ -141,6 +141,16 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
       <div style="margin-top:12px;text-align:right"><button class="big navy" id="toStep2" disabled>完成イメージをつくる →</button></div>
     </div>
   </div>
+  <div class="card" style="margin-top:14px">
+    <h2>図面と価格表を読み込む</h2>
+    <p class="sub">お客様宅の図面（CADのDXFファイル）と、会社の価格表（Excel）を読み込むと、3Dと提案書の金額に反映されます。</p>
+    <div class="row" style="gap:10px;align-items:center">
+      <label class="big ghost"><input id="dxf" type="file" accept=".dxf" hidden>📐 図面（DXF）を読み込む</label><span class="sub" id="dxfSt">未読み込み</span>
+    </div>
+    <div class="row" style="gap:10px;align-items:center;margin-top:10px">
+      <label class="big ghost"><input id="xls" type="file" accept=".xlsx,.xls" hidden>📊 価格表（Excel）を読み込む</label><span class="sub" id="xlsSt">未読み込み</span>
+    </div>
+  </div>
 </section>
 
 <!-- STEP 2 -->
@@ -164,7 +174,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
       <h2 style="margin:0">図面から3Dで見る</h2>
       <div class="seg" id="seg3"><button data-k="A" aria-pressed="false">プランA</button><button data-k="B" aria-pressed="true">プランB</button><button data-k="C" aria-pressed="false">プランC</button></div>
     </div>
-    <p class="sub" id="src3">図面データ：みやこ都市ガス_キッチン平面図.dxf（幅3,000×奥行2,700mm、天井2,400mm）</p>
+    <p class="sub" id="src3"></p>
     <div id="three"><span class="hint">指で回す・2本指で拡大縮小</span></div>
     <p class="note">寸法は図面どおり。色や質感は目安です。</p>
   </div>
@@ -177,7 +187,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
       <input id="cust" placeholder="お客様のお名前（例：湖畔 太郎）">
       <button class="big navy" id="print">印刷・PDFにする</button>
     </div>
-    <p class="sub">STEP 2で選んだプランと完成イメージ、STEP 3の3Dの画面が入ります。</p>
+    <p class="sub">STEP 2で選んだプランと完成イメージ、STEP 3の3Dの画面、価格表の内訳と合計が入ります。</p>
   </div>
   <div id="proposal"></div>
 </section>
@@ -196,8 +206,86 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
 </dialog>
 <div class="toast" id="toast"></div>
 
+<script src="./lib/xlsx.full.min.js"></script>
 <script>
-const PRICES = {"キッチン": [{"code": "A", "name": "部分リフォーム（コンロ・レンジフードの交換）", "days": "1日", "items": [{"item": "ビルトインガスコンロ", "spec": "ガラストップ・3口・グリル付き", "price": 98000}, {"item": "レンジフード", "spec": "スリム型・掃除しやすいフィルター", "price": 78000}, {"item": "キッチン水栓", "spec": "シングルレバー", "price": 32000}, {"item": "取付工事費", "spec": "コンロ・レンジフード・水栓", "price": 45000}, {"item": "撤去品の処分費", "spec": "", "price": 8000}], "subtotal": 261000, "tax": 26100, "total": 287100}, {"code": "B", "name": "システムキッチンの入れ替え（スタンダード）", "days": "3〜4日", "items": [{"item": "システムキッチン", "spec": "I型 幅255cm・明るい木目・ステンレス天板", "price": 520000}, {"item": "ビルトインガスコンロ", "spec": "ガラストップ・3口・グリル付き", "price": 98000}, {"item": "レンジフード", "spec": "スリム型・掃除しやすいフィルター", "price": 78000}, {"item": "ビルトイン食器洗い乾燥機", "spec": "標準タイプ", "price": 140000}, {"item": "キッチンパネル", "spec": "タイル壁の上に張る（目地なし）", "price": 85000}, {"item": "解体・撤去", "spec": "", "price": 60000}, {"item": "組立・設置", "spec": "", "price": 120000}, {"item": "給排水・ガス接続", "spec": "", "price": 55000}, {"item": "撤去品の処分費", "spec": "", "price": 25000}], "subtotal": 1181000, "tax": 118100, "total": 1299100}, {"code": "C", "name": "システムキッチンの入れ替え（ハイグレード）", "days": "5〜6日", "items": [{"item": "システムキッチン", "spec": "I型 幅255cm・人造大理石天板・引き出し収納", "price": 880000}, {"item": "ビルトインガスコンロ", "spec": "ガラストップ・3口・自動調理機能付き", "price": 168000}, {"item": "レンジフード", "spec": "自動洗浄機能付き", "price": 158000}, {"item": "ビルトイン食器洗い乾燥機", "spec": "深型", "price": 168000}, {"item": "キッチン水栓", "spec": "タッチレス", "price": 68000}, {"item": "キッチンパネル", "spec": "タイル壁の上に張る（目地なし）", "price": 85000}, {"item": "LED照明", "spec": "天井・手元", "price": 45000}, {"item": "床の張り替え", "spec": "フローリング調", "price": 95000}, {"item": "解体・撤去", "spec": "", "price": 60000}, {"item": "組立・設置", "spec": "", "price": 140000}, {"item": "給排水・ガス接続", "spec": "", "price": 55000}, {"item": "内装工事", "spec": "", "price": 60000}, {"item": "撤去品の処分費", "spec": "", "price": 30000}], "subtotal": 2012000, "tax": 201200, "total": 2213200}], "浴室": [{"code": "A", "name": "部分リフォーム（給湯器・浴室暖房乾燥機）", "days": "1〜2日", "items": [{"item": "ガス給湯器（高効率タイプ）", "spec": "24号・オート", "price": 268000}, {"item": "浴室暖房乾燥機", "spec": "ガス温水式", "price": 198000}, {"item": "浴室水栓", "spec": "サーモスタット混合水栓", "price": 38000}, {"item": "手すり", "spec": "2本", "price": 24000}, {"item": "取付工事費", "spec": "", "price": 85000}, {"item": "撤去品の処分費", "spec": "", "price": 15000}], "subtotal": 628000, "tax": 62800, "total": 690800}, {"code": "B", "name": "ユニットバスへの入れ替え（スタンダード）", "days": "4〜5日", "items": [{"item": "ユニットバス", "spec": "1616サイズ・スタンダード", "price": 720000}, {"item": "ガス給湯器（高効率タイプ）", "spec": "24号・オート", "price": 268000}, {"item": "解体（タイル張りの浴室）", "spec": "", "price": 150000}, {"item": "組立", "spec": "", "price": 110000}, {"item": "給排水・電気・ガス工事", "spec": "", "price": 90000}, {"item": "ドア枠・内装", "spec": "", "price": 60000}, {"item": "撤去品の処分費", "spec": "", "price": 40000}], "subtotal": 1438000, "tax": 143800, "total": 1581800}, {"code": "C", "name": "ユニットバスへの入れ替え（ハイグレード）", "days": "5〜6日", "items": [{"item": "ユニットバス", "spec": "1616サイズ・断熱浴槽・乾きやすい床", "price": 1080000}, {"item": "ガス給湯器（高効率タイプ）", "spec": "24号・フルオート", "price": 318000}, {"item": "浴室暖房乾燥機", "spec": "ガス温水式・ミストサウナ付き", "price": 248000}, {"item": "解体（タイル張りの浴室）", "spec": "", "price": 150000}, {"item": "組立", "spec": "", "price": 120000}, {"item": "給排水・電気・ガス工事", "spec": "", "price": 110000}, {"item": "ドア枠・内装", "spec": "", "price": 60000}, {"item": "撤去品の処分費", "spec": "", "price": 40000}], "subtotal": 2126000, "tax": 212600, "total": 2338600}]};
+// ---- DXF (ASCII) → floor plan model. Reads LINE / TEXT entities from the ENTITIES section.
+function parseDXF(text) {
+  const L = text.split(/\r?\n/);
+  let i = 0;
+  while (i < L.length && !(L[i].trim() === 'ENTITIES' && L[i - 1] && L[i - 1].trim() === '2')) i++;
+  const ents = []; let cur = null;
+  for (i++; i + 1 < L.length; i += 2) {
+    const code = parseInt(L[i].trim(), 10), val = L[i + 1].trim();
+    if (code === 0) { if (cur) ents.push(cur); if (val === 'ENDSEC') break; cur = { type: val }; continue; }
+    if (!cur) continue;
+    if (code === 8) cur.layer = val;
+    else if (code === 1) cur.text = val;
+    else if ([10, 20, 11, 21].includes(code)) cur['c' + code] = parseFloat(val);
+  }
+  const lines = ents.filter(e => e.type === 'LINE');
+  const texts = ents.filter(e => e.type === 'TEXT' || e.type === 'MTEXT').map(e => e.text || '');
+  // group consecutive LINEs of a layer into closed rectangles
+  const rects = {};
+  const byLayer = {};
+  for (const l of lines) (byLayer[l.layer] = byLayer[l.layer] || []).push(l);
+  for (const [layer, ls] of Object.entries(byLayer)) {
+    const out = [];
+    for (let k = 0; k + 3 < ls.length; k += 4) {
+      const g = ls.slice(k, k + 4), xs = g.flatMap(l => [l.c10, l.c11]), ys = g.flatMap(l => [l.c20, l.c21]);
+      const closed = g.every((l, j) => { const n = g[(j + 1) % 4]; return Math.abs(l.c11 - n.c10) < 1 && Math.abs(l.c21 - n.c20) < 1; });
+      if (closed) out.push({ x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) });
+    }
+    rects[layer] = out;
+  }
+  const walls = rects.WALL || [];
+  if (walls.length < 3) throw new Error('壁（WALLレイヤー）が見つかりません');
+  const cx = r => (r.x0 + r.x1) / 2, cy = r => (r.y0 + r.y1) / 2;
+  const left = walls.reduce((a, b) => cx(a) < cx(b) ? a : b), right = walls.reduce((a, b) => cx(a) > cx(b) ? a : b), back = walls.reduce((a, b) => cy(a) > cy(b) ? a : b);
+  const ox = left.x1, oy = Math.min(left.y0, right.y0);
+  const W = right.x0 - ox, D = back.y0 - oy;
+  const rel = r => r && ({ x: (r.x0 - ox) / 1000, z: (r.y0 - oy) / 1000, w: (r.x1 - r.x0) / 1000, d: (r.y1 - r.y0) / 1000 });
+  const one = n => rel((rects[n] || [])[0]);
+  // door: the line lying on a wall (vertical line near the right or left wall)
+  let door = null;
+  for (const l of byLayer.DOOR || []) {
+    if (Math.abs(l.c10 - l.c11) < 1) { const x = l.c10 - ox; door = { side: Math.abs(x - W) < Math.abs(x) ? 'right' : 'left', z0: (Math.min(l.c20, l.c21) - oy) / 1000, z1: (Math.max(l.c20, l.c21) - oy) / 1000 }; }
+  }
+  const all = texts.join(' ');
+  const num = (re, d) => { const m = all.match(re); return m ? parseFloat(m[1]) / 1000 : d; };
+  const H = { ceiling: num(/天井\s*(\d+)/, 2.4), counter: num(/カウンター\s*(\d+)/, .85), hood: num(/レンジフード下端\s*(\d+)/, 1.6),
+              cabBottom: num(/吊戸棚\s*下端\s*(\d+)/, 1.5), cabHeight: num(/吊戸棚[^／]*高さ\s*(\d+)/, .7), door: num(/勝手口\s*高さ\s*(\d+)/, 2.0) };
+  return { W: W / 1000, D: D / 1000, H, kitchen: one('KITCHEN'), cooktop: one('COOKTOP'), sink: one('SINK'), hood: one('HOOD'),
+           cabinet: one('WALL_CABINET'), fridge: one('FRIDGE'), door };
+}
+
+// ---- price list workbook (SheetJS) → { キッチン: [plans], 浴室: [plans] }
+function parsePriceBook(wb) {
+  const out = {};
+  for (const room of ['キッチン', '浴室']) {
+    const name = wb.SheetNames.find(n => n.includes(room)); if (!name) continue;
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null });
+    const plans = []; let cur = null;
+    for (const r of rows) {
+      const a = r[0] == null ? '' : String(r[0]);
+      const m = a.match(/^プラン\s*([ABC])\s*[　 ]?(.*)$/);
+      if (m) { cur = { code: m[1], name: m[2].trim(), days: r[4] ? String(r[4]) : '', items: [] }; plans.push(cur); continue; }
+      if (!cur || !a || a === '品目') continue;
+      const q = Number(r[2]), unit = Number(r[3]);
+      if (isFinite(unit) && unit > 0) cur.items.push({ item: a, spec: r[1] || '', price: Number(r[4]) || (isFinite(q) && q > 0 ? q : 1) * unit });
+    }
+    for (const p of plans) { p.subtotal = p.items.reduce((s, x) => s + x.price, 0); p.tax = Math.round(p.subtotal * 0.1); p.total = p.subtotal + p.tax; }
+    if (plans.length) out[room] = plans;
+  }
+  if (!Object.keys(out).length) throw new Error('「キッチン」「浴室」のシートにプランが見つかりません');
+  return out;
+}
+
+
+</script>
+<script>
+let PRICES = null;
+const PLAN_NAMES = { 'キッチン': { A: '部分リフォーム（コンロ・レンジフードの交換）', B: 'システムキッチンの入れ替え（スタンダード）', C: 'システムキッチンの入れ替え（ハイグレード）' }, '浴室': { A: '部分リフォーム（給湯器・浴室暖房乾燥機）', B: 'ユニットバスへの入れ替え（スタンダード）', C: 'ユニットバスへの入れ替え（ハイグレード）' } };
+const planList = room => (PRICES && PRICES[room]) || ['A', 'B', 'C'].map(c => ({ code: c, name: PLAN_NAMES[room][c], days: '', items: [] }));
 const DEFAULT_MODEL = 'gemini-3.1-flash-image';
 const COMMON = '写実的な写真にしてください。添付の写真と同じカメラ位置・同じ画角・同じ部屋のまま、窓・ドア・天井・壁の位置は変えないでください。人物、製品のロゴ、メーカー名、文字は入れないでください。';
 const PROMPTS = {
@@ -221,7 +309,7 @@ function toast(m, ms = 3200) { const t = $('#toast'); t.textContent = m; t.class
 function go(p) {
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.p === p));
   document.querySelectorAll('section.pane').forEach(s => s.classList.toggle('on', s.id === p));
-  if (p === 'p3') { init3D(); $('#src3').textContent = S.room === '浴室' ? '浴室の図面データが入ると、浴室も3Dで見られます（いまはキッチンの図面を表示しています）' : '図面データ：みやこ都市ガス_キッチン平面図.dxf（幅3,000×奥行2,700mm、天井2,400mm）'; } if (p === 'p4') renderProposal();
+  if (p === 'p3') { init3D(); if (window.set3D) window.set3D(S.sel); $('#src3').textContent = !window.PLAN ? '図面がまだ読み込まれていません（STEP 1で読み込めます）' : S.room === '浴室' ? '浴室の図面データが入ると、浴室も3Dで見られます（いまはキッチンの図面を表示しています）' : `図面データ：${$('#dxfSt').textContent.replace('✓ ', '')}`; } if (p === 'p4') renderProposal();
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.p)));
@@ -292,13 +380,13 @@ function loadPrepared(code) {
 
 // ---------- plans
 function renderPlans() {
-  const ps = PRICES[S.room];
+  const ps = planList(S.room);
   $('#plans').innerHTML = ps.map(p => {
     const img = S.after[S.room][p.code], busy = S.busy[S.room + p.code];
     return `<div class="plan${S.sel === p.code ? ' sel' : ''}">
       <div class="code">プラン${p.code}</div><div class="nm">${p.name}</div>
       <div class="thumb">${busy ? '<div><div class="spin"></div>AIが描いています…</div>' : img ? `<img src="${img}" alt="プラン${p.code}の完成イメージ">` : 'まだイメージがありません'}</div>
-      <div class="meta">工期の目安 ${p.days}／合計 ${man(p.total)}（税込）</div>
+      <div class="meta">${p.total ? `工期の目安 ${p.days}／合計 ${man(p.total)}（税込）` : '価格表を読み込むと、金額と工期が出ます'}</div>
       <div class="acts"><button class="gen" data-g="${p.code}" ${busy ? 'disabled' : ''}>${img ? 'もう一度つくる' : 'イメージをつくる'}</button><button class="pick" data-s="${p.code}">${S.sel === p.code ? '選択中' : 'このプラン'}</button></div>
       <button class="load" data-l="${p.code}">用意した画像を使う</button>
     </div>`;
@@ -324,27 +412,38 @@ function renderCompare() {
 
 // ---------- proposal
 function renderProposal() {
-  const p = PRICES[S.room].find(x => x.code === S.sel), a = S.after[S.room][S.sel];
+  const p = planList(S.room).find(x => x.code === S.sel), a = S.after[S.room][S.sel];
   const d = new Date(), ds = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   if (window.set3D) window.set3D(S.sel);
   const snap = S.room === 'キッチン' && window.__snap ? window.__snap() : null;
   const name = $('#cust').value.trim();
   $('#proposal').innerHTML = `
     <div class="ph"><div><div class="to">${name ? name + '　様' : '　　　　　　　様'}</div><h3>${S.room}リフォームのご提案</h3></div><div style="text-align:right">${ds}<br>みやこ都市ガス株式会社</div></div>
-    <div><b>プラン${p.code}　${p.name}</b>　／　工期の目安 ${p.days}</div>
+    <div><b>プラン${p.code}　${p.name}</b>${p.days ? `　／　工期の目安 ${p.days}` : ''}</div>
     <div class="imgs">
       <figure>${S.before ? `<img src="${S.before}" alt="">` : '<div class="ph0">写真なし</div>'}<figcaption>今のご様子</figcaption></figure>
       <figure>${a ? `<img src="${a}" alt="">` : '<div class="ph0">完成イメージなし</div>'}<figcaption>完成イメージ（画像生成AIによるイメージ）</figcaption></figure>
       ${snap ? `<figure><img src="${snap}" alt=""><figcaption>図面から作成した3D（色・質感は目安）</figcaption></figure>` : ''}
     </div>
-    <table><tr><th>品目</th><th>仕様</th><th style="text-align:right">金額（税抜）</th></tr>
+    ${p.total ? `<table><tr><th>品目</th><th>仕様</th><th style="text-align:right">金額（税抜）</th></tr>
       ${p.items.map(i => `<tr><td>${i.item}</td><td>${i.spec}</td><td class="n">${yen(i.price)}</td></tr>`).join('')}
       <tr><td colspan="2">小計（税抜）</td><td class="n">${yen(p.subtotal)}</td></tr>
       <tr><td colspan="2">消費税（10%）</td><td class="n">${yen(p.tax)}</td></tr>
-      <tr class="tot"><td colspan="2">合計（税込）</td><td class="n">${yen(p.total)}</td></tr></table>
+      <tr class="tot"><td colspan="2">合計（税込）</td><td class="n">${yen(p.total)}</td></tr></table>` : '<p class="sub">（価格表を読み込むと、内訳と合計が入ります）</p>'}
     <div class="warn">・本書は概算です。現地調査のうえ、正式にお見積りします。設置の可否・寸法・工事内容も、現地調査で確認いたします。<br>・完成イメージは画像生成AIによるイメージで、実際の仕上がり・色・寸法とは異なります。<br>・会社名・商品・価格は講演デモ用の架空のものです。</div>`;
 }
 $('#cust').addEventListener('input', renderProposal);
+// ---- drawing & price list
+$('#dxf').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
+  fr.onload = () => { try { const plan = parseDXF(fr.result); window.PLAN = plan; if (window.rebuild3D) window.rebuild3D();
+      $('#dxfSt').textContent = `✓ ${f.name}（幅${(plan.W * 1000).toLocaleString()}×奥行${(plan.D * 1000).toLocaleString()}mm、天井${(plan.H.ceiling * 1000).toLocaleString()}mm）`; toast('図面を読み込みました。STEP 3で3Dになります'); }
+    catch (err) { $('#dxfSt').textContent = '読み込めませんでした：' + err.message; } };
+  fr.readAsText(f); });
+$('#xls').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
+  fr.onload = () => { try { PRICES = parsePriceBook(XLSX.read(fr.result, { type: 'array' })); const n = Object.values(PRICES).reduce((s, x) => s + x.length, 0);
+      $('#xlsSt').textContent = `✓ ${f.name}（${Object.keys(PRICES).join('・')}　${n}プラン）`; renderPlans(); toast('価格表を読み込みました'); }
+    catch (err) { $('#xlsSt').textContent = '読み込めませんでした：' + err.message; } };
+  fr.readAsArrayBuffer(f); });
 window.__pick = k => { S.sel = k; renderPlans(); renderCompare(); };
 $('#print').addEventListener('click', () => { renderProposal(); setTimeout(() => window.print(), 300); });
 
@@ -355,13 +454,13 @@ renderPlans();
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from './lib/OrbitControls.js';
-// Geometry from みやこ都市ガス_キッチン平面図.dxf (mm → m). Origin: front-left corner, z toward the back wall.
-const W = 3.0, D = 2.7, H = 2.4;
+// Geometry comes from the loaded DXF (window.PLAN, metres). Origin: front-left corner of the room, z toward the back wall.
+let W = 3.0, D = 2.7, H = 2.4;
 const STYLES = {
   A: { door: 0x4a3426, top: 0xc4c8cc, splash: 'tile', floor: 0xa47c56, cab: 0x4a3426 },
   B: { door: 0xcfae84, top: 0xc4c8cc, splash: 0xf7f7f4, floor: 0xa47c56, cab: 0xcfae84 },
   C: { door: 0xa89f93, top: 0xf2efe9, splash: 0xf7f7f4, floor: 0xc79d70, cab: 0xa89f93 } };
-let inited = false, scene, renderer, camera, controls, mats = {}, current = 'B';
+let inited = false, scene, renderer, camera, controls, mats = {}, current = 'B', group;
 function tileTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
   g.fillStyle = '#f3eee2'; g.fillRect(0, 0, 128, 128); g.strokeStyle = '#c9b48f'; g.lineWidth = 3;
@@ -370,53 +469,54 @@ function tileTexture() {
 }
 // mirror x so that the plan reads left-to-right when viewed from the dining side
 const MX = v => W - v;
-function box(w, h, d, x, y, z, mat) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(MX(x + w / 2), y + h / 2, z + d / 2); scene.add(m); return m; }
+function box(w, h, d, x, y, z, mat) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(MX(x + w / 2), y + h / 2, z + d / 2); group.add(m); return m; }
 const std = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6, metalness: 0 }, o));
-function build() {
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xe6e0d6, 1.6)); scene.add(new THREE.AmbientLight(0xffffff, .5));
-  const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(1.5, 3.5, -1.5); scene.add(dl);
-  const dl2 = new THREE.DirectionalLight(0xffffff, .5); dl2.position.set(-2, 2, 3); scene.add(dl2);
+function build(P) {
+  if (group) { scene.remove(group); group.traverse(o => o.geometry && o.geometry.dispose()); }
+  group = new THREE.Group(); scene.add(group);
+  W = P.W; D = P.D; H = P.H.ceiling; const ct = P.H.counter;
   mats.floor = std(0xa47c56, { roughness: .8 }); mats.wall = std(0xfaf8f3, { roughness: .9 });
   mats.tile = std(0xffffff, { map: tileTexture(), roughness: .5 }); mats.panel = std(0xf7f7f4, { roughness: .4 });
   mats.door = std(0xcfae84, { roughness: .55 }); mats.cab = std(0xcfae84, { roughness: .55 }); mats.top = std(0xc4c8cc, { roughness: .3, metalness: .6 });
-  // floor & walls
+  mats.splashMesh = null;
   box(W, .02, D, 0, -.02, 0, mats.floor);
-  box(.02, H, D, -.02, 0, 0, mats.wall);                          // left wall
-  box(W + .04, H, .02, -.02, 0, D, mats.wall);                    // back wall
-  box(.02, H, D, W, 0, 0, mats.wall);                             // right wall
-  mats.splashMesh = box(2.55, .61, .01, .15, .89, D - .01, mats.tile); // backsplash between counter and wall cabinets
-  // base cabinets 150..2700, depth 650
-  const kx = .15, kw = 2.55, kd = .65, kz = D - kd;
-  box(kw, .1, kd - .05, kx, 0, kz + .05, std(0x2b2b2b));
-  const doorW = kw / 6;
-  for (let i = 0; i < 6; i++) box(doorW - .006, .74, .02, kx + i * doorW + .003, .1, kz, mats.door);
-  box(kw, .74, kd - .02, kx, .1, kz + .02, mats.door);
-  box(kw + .02, .04, kd + .02, kx - .01, .85, kz - .02, mats.top);  // countertop
-  // gas cooktop 330..930, 2140..2620 (dxf y) → z = y
-  box(.6, .012, .48, .33, .89, 2.14, std(0x1d1f22, { roughness: .2, metalness: .3 }));
-  for (const [x, z, r] of [[.45, 2.27, .06], [.81, 2.27, .06], [.63, 2.5, .05]]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r, .02, 24), std(0x444a50, { metalness: .5 })); b.position.set(MX(x), .905, z); scene.add(b); }
-  // sink 1880..2640
-  box(.76, .006, .46, 1.88, .887, 2.14, std(0x8d9399, { metalness: .7, roughness: .3 }));
-  const fz = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, .3, 12), std(0xd0d4d8, { metalness: .9, roughness: .2 })); fz.position.set(MX(2.26), 1.04, 2.62); scene.add(fz);
-  // range hood (new, slim) 150..1050 above cooktop
-  box(.9, .4, .5, .15, 1.6, D - .5, std(0xdfe2e5, { metalness: .4, roughness: .35 }));
-  // wall cabinets 1050..2700, h 1500..2200, depth 350
-  box(1.65, .7, .35, 1.05, 1.5, D - .35, mats.cab);
-  // back door (glass) on right wall z 1.35..2.15
-  box(.04, 2.0, .8, W - .04, 0, 1.35, std(0x9aa3ae, { metalness: .5 }));
-  box(.045, 1.7, .6, W - .045, .2, 1.45, std(0xdfefff, { transparent: true, opacity: .55, roughness: .1 }));
-  // refrigerator
-  box(.7, 1.6, .65, 0, 0, .35, std(0xd7dadd, { roughness: .4 }));
+  box(.02, H, D, -.02, 0, 0, mats.wall); box(W + .04, H, .02, -.02, 0, D, mats.wall); box(.02, H, D, W, 0, 0, mats.wall);
+  const K = P.kitchen;
+  if (K) {
+    mats.splashMesh = box(K.w, P.H.cabBottom - ct - .04, .01, K.x, ct + .04, D - .01, mats.tile);
+    box(K.w, .1, K.d - .05, K.x, 0, K.z + .05, std(0x2b2b2b));
+    const n = Math.max(2, Math.round(K.w / .45)), dw = K.w / n;
+    for (let i = 0; i < n; i++) box(dw - .006, ct - .11, .02, K.x + i * dw + .003, .1, K.z, mats.door);
+    box(K.w, ct - .11, K.d - .02, K.x, .1, K.z + .02, mats.door);
+    box(K.w + .02, .04, K.d + .02, K.x - .01, ct, K.z - .02, mats.top);
+  }
+  const C = P.cooktop;
+  if (C) { box(C.w, .012, C.d, C.x, ct + .04, C.z, std(0x1d1f22, { roughness: .2, metalness: .3 }));
+    for (const [fx, fz, r] of [[.2, .27, .06], [.8, .27, .06], [.5, .75, .05]]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r, .02, 24), std(0x444a50, { metalness: .5 })); b.position.set(MX(C.x + C.w * fx), ct + .055, C.z + C.d * fz); group.add(b); } }
+  const Sk = P.sink;
+  if (Sk) { box(Sk.w, .006, Sk.d, Sk.x, ct + .037, Sk.z, std(0x8d9399, { metalness: .7, roughness: .3 }));
+    const fz = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, .3, 12), std(0xd0d4d8, { metalness: .9, roughness: .2 })); fz.position.set(MX(Sk.x + Sk.w / 2), ct + .19, Sk.z + Sk.d + .02); group.add(fz); }
+  const Hd = P.hood; if (Hd) box(Hd.w, .4, Hd.d, Hd.x, P.H.hood, Hd.z, std(0xdfe2e5, { metalness: .4, roughness: .35 }));
+  const Cb = P.cabinet; if (Cb) box(Cb.w, P.H.cabHeight, Cb.d, Cb.x, P.H.cabBottom, Cb.z, mats.cab);
+  const Dr = P.door;
+  if (Dr) { const x = Dr.side === 'right' ? W - .04 : 0, len = Dr.z1 - Dr.z0;
+    box(.04, P.H.door, len, x, 0, Dr.z0, std(0x9aa3ae, { metalness: .5 }));
+    box(.045, P.H.door - .3, len - .2, Dr.side === 'right' ? W - .045 : 0, .2, Dr.z0 + .1, std(0xdfefff, { transparent: true, opacity: .55, roughness: .1 })); }
+  const F = P.fridge; if (F) box(F.w, 1.6, F.d, F.x, 0, F.z, std(0xd7dadd, { roughness: .4 }));
+  camera.position.set(MX(W * .53), 1.55, -1.1); controls.target.set(MX(W * .48), 1.0, D * .78); controls.update();
+  set3D(current);
 }
 function set3D(k) {
   current = k; const s = STYLES[k]; if (!inited) return;
-  mats.door.color.setHex(s.door); mats.cab.color.setHex(s.cab); mats.top.color.setHex(s.top); mats.floor.color.setHex(s.floor);
+  if (!mats.door) return; mats.door.color.setHex(s.door); mats.cab.color.setHex(s.cab); mats.top.color.setHex(s.top); mats.floor.color.setHex(s.floor);
   mats.top.metalness = k === 'C' ? .05 : .6; mats.top.roughness = k === 'C' ? .25 : .3;
-  if (s.splash === 'tile') mats.splashMesh.material = mats.tile; else { mats.panel.color.setHex(s.splash); mats.splashMesh.material = mats.panel; }
+  if (mats.splashMesh) { if (s.splash === 'tile') mats.splashMesh.material = mats.tile; else { mats.panel.color.setHex(s.splash); mats.splashMesh.material = mats.panel; } }
   document.querySelectorAll('#seg3 button').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k));
 }
 function init3D() {
   const host = document.getElementById('three');
+  if (!window.PLAN) { host.querySelector('.hint').textContent = 'STEP 1で図面（DXF）を読み込むと、ここに3Dが出ます'; return; }
+  host.querySelector('.hint').textContent = '指で回す・2本指で拡大縮小';
   if (inited) { resize(); return; }
   inited = true;
   scene = new THREE.Scene(); scene.background = new THREE.Color(0xe9eef5);
@@ -424,12 +524,16 @@ function init3D() {
   renderer.setPixelRatio(Math.min(2, devicePixelRatio)); host.prepend(renderer.domElement);
   camera = new THREE.PerspectiveCamera(55, 16 / 10, .05, 50); camera.position.set(MX(1.6), 1.55, -1.1);
   controls = new OrbitControls(camera, renderer.domElement); controls.target.set(MX(1.45), 1.0, 2.1);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xe6e0d6, 1.6)); scene.add(new THREE.AmbientLight(0xffffff, .5));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(1.5, 3.5, -1.5); scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, .5); dl2.position.set(-2, 2, 3); scene.add(dl2);
   controls.enableDamping = true; controls.minDistance = 1; controls.maxDistance = 7; controls.maxPolarAngle = Math.PI * .52;
-  build(); set3D(current); resize(); window.addEventListener('resize', resize);
+  build(window.PLAN); resize(); window.addEventListener('resize', resize);
   (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
 }
 function resize() { const host = document.getElementById('three'), w = host.clientWidth, h = host.clientHeight; if (!w) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 window.init3D = init3D; window.set3D = set3D;
+window.rebuild3D = () => { if (inited && window.PLAN) build(window.PLAN); };
 window.__snap = () => { if (!inited) return null; renderer.render(scene, camera); return renderer.domElement.toDataURL('image/jpeg', .85); };
 document.querySelectorAll('#seg3 button').forEach(b => b.addEventListener('click', () => { set3D(b.dataset.k); if (window.__pick) window.__pick(b.dataset.k); }));
 </script>
