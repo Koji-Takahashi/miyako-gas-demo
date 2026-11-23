@@ -143,9 +143,9 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
   </div>
   <div class="card" style="margin-top:14px">
     <h2>図面と価格表を読み込む</h2>
-    <p class="sub">お客様宅の図面（CADのDXFファイル）と、会社の価格表（Excel）を読み込むと、3Dと提案書の金額に反映されます。</p>
+    <p class="sub">お客様宅の図面（CADのDXFファイル。キッチン・浴室のどちらでも）と、会社の価格表（Excel）を読み込むと、3Dと提案書の金額に反映されます。</p>
     <div class="row" style="gap:10px;align-items:center">
-      <label class="big ghost"><input id="dxf" type="file" accept=".dxf" hidden>📐 図面（DXF）を読み込む</label><span class="sub" id="dxfSt">未読み込み</span>
+      <label class="big ghost"><input id="dxf" type="file" accept=".dxf" multiple hidden>📐 図面（DXF）を読み込む</label><span class="sub" id="dxfSt">未読み込み</span>
     </div>
     <div class="row" style="gap:10px;align-items:center;margin-top:10px">
       <label class="big ghost"><input id="xls" type="file" accept=".xlsx,.xls" hidden>📊 価格表（Excel）を読み込む</label><span class="sub" id="xlsSt">未読み込み</span>
@@ -230,10 +230,10 @@ function parseDXF(text) {
   for (const l of lines) (byLayer[l.layer] = byLayer[l.layer] || []).push(l);
   for (const [layer, ls] of Object.entries(byLayer)) {
     const out = [];
-    for (let k = 0; k + 3 < ls.length; k += 4) {
+    for (let k = 0; k + 3 < ls.length;) {
       const g = ls.slice(k, k + 4), xs = g.flatMap(l => [l.c10, l.c11]), ys = g.flatMap(l => [l.c20, l.c21]);
       const closed = g.every((l, j) => { const n = g[(j + 1) % 4]; return Math.abs(l.c11 - n.c10) < 1 && Math.abs(l.c21 - n.c20) < 1; });
-      if (closed) out.push({ x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) });
+      if (closed) { out.push({ x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }); k += 4; } else k += 1;
     }
     rects[layer] = out;
   }
@@ -252,9 +252,15 @@ function parseDXF(text) {
   }
   const all = texts.join(' ');
   const num = (re, d) => { const m = all.match(re); return m ? parseFloat(m[1]) / 1000 : d; };
+  if ((rects.BATHTUB || []).length) {
+    const win = one('WINDOW');
+    return { type: 'bath', W: W / 1000, D: D / 1000, tub: one('BATHTUB'), window: win, faucet: one('FAUCET'), remote: one('REMOTE'), drain: one('DRAIN'), door,
+             H: { ceiling: num(/天井\s*(\d+)/, 2.2), tub: num(/浴槽\s*高さ\s*(\d+)/, .55), winBottom: num(/窓\s*下端\s*(\d+)/, 1.1), winHeight: num(/窓[^／]*高さ\s*(\d+)/, .7),
+                  door: num(/ドア\s*高さ\s*(\d+)/, 1.9), faucet: num(/水栓\s*高さ\s*(\d+)/, .7), remote: num(/リモコン\s*高さ\s*(\d+)/, 1.2) } };
+  }
   const H = { ceiling: num(/天井\s*(\d+)/, 2.4), counter: num(/カウンター\s*(\d+)/, .85), hood: num(/レンジフード下端\s*(\d+)/, 1.6),
               cabBottom: num(/吊戸棚\s*下端\s*(\d+)/, 1.5), cabHeight: num(/吊戸棚[^／]*高さ\s*(\d+)/, .7), door: num(/勝手口\s*高さ\s*(\d+)/, 2.0) };
-  return { W: W / 1000, D: D / 1000, H, kitchen: one('KITCHEN'), cooktop: one('COOKTOP'), sink: one('SINK'), hood: one('HOOD'),
+  return { type: 'kitchen', W: W / 1000, D: D / 1000, H, kitchen: one('KITCHEN'), cooktop: one('COOKTOP'), sink: one('SINK'), hood: one('HOOD'),
            cabinet: one('WALL_CABINET'), fridge: one('FRIDGE'), door };
 }
 
@@ -309,7 +315,7 @@ function toast(m, ms = 3200) { const t = $('#toast'); t.textContent = m; t.class
 function go(p) {
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.p === p));
   document.querySelectorAll('section.pane').forEach(s => s.classList.toggle('on', s.id === p));
-  if (p === 'p3') { init3D(); if (window.set3D) window.set3D(S.sel); $('#src3').textContent = !window.PLAN ? '図面がまだ読み込まれていません（STEP 1で読み込めます）' : S.room === '浴室' ? '浴室の図面データが入ると、浴室も3Dで見られます（いまはキッチンの図面を表示しています）' : `図面データ：${$('#dxfSt').textContent.replace('✓ ', '')}`; } if (p === 'p4') renderProposal();
+  if (p === 'p3') { init3D(); if (window.set3D) window.set3D(S.sel); $('#src3').textContent = window.PLANS[S.room] ? `図面データ（${S.room}）：${planInfo[S.room]}` : `${S.room}の図面がまだ読み込まれていません（STEP 1で読み込めます）`; } if (p === 'p4') renderProposal();
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.p)));
@@ -323,7 +329,7 @@ $('#saveSet').addEventListener('click', () => { store.set('gemini_key', $('#key'
 
 // ---------- room
 document.querySelectorAll('#roomSeg button').forEach(b => b.addEventListener('click', () => {
-  S.room = b.dataset.r; document.querySelectorAll('#roomSeg button').forEach(x => x.setAttribute('aria-pressed', x === b)); renderPlans(); renderCompare();
+  S.room = b.dataset.r; document.querySelectorAll('#roomSeg button').forEach(x => x.setAttribute('aria-pressed', x === b)); renderPlans(); renderCompare(); if (window.rebuild3D) window.rebuild3D();
 }));
 
 // ---------- photo (downscaled to max 1600px)
@@ -415,7 +421,7 @@ function renderProposal() {
   const p = planList(S.room).find(x => x.code === S.sel), a = S.after[S.room][S.sel];
   const d = new Date(), ds = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   if (window.set3D) window.set3D(S.sel);
-  const snap = S.room === 'キッチン' && window.__snap ? window.__snap() : null;
+  const snap = window.PLANS[S.room] && window.__snap ? window.__snap() : null;
   const name = $('#cust').value.trim();
   $('#proposal').innerHTML = `
     <div class="ph"><div><div class="to">${name ? name + '　様' : '　　　　　　　様'}</div><h3>${S.room}リフォームのご提案</h3></div><div style="text-align:right">${ds}<br>みやこ都市ガス株式会社</div></div>
@@ -434,11 +440,14 @@ function renderProposal() {
 }
 $('#cust').addEventListener('input', renderProposal);
 // ---- drawing & price list
-$('#dxf').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
-  fr.onload = () => { try { const plan = parseDXF(fr.result); window.PLAN = plan; if (window.rebuild3D) window.rebuild3D();
-      $('#dxfSt').textContent = `✓ ${f.name}（幅${(plan.W * 1000).toLocaleString()}×奥行${(plan.D * 1000).toLocaleString()}mm、天井${(plan.H.ceiling * 1000).toLocaleString()}mm）`; toast('図面を読み込みました。STEP 3で3Dになります'); }
+window.PLANS = {}; const planInfo = {};
+function dxfStatus() { $('#dxfSt').textContent = Object.keys(planInfo).length ? Object.entries(planInfo).map(([r, t]) => `✓ ${r}：${t}`).join('　') : '未読み込み'; }
+$('#dxf').addEventListener('change', e => { for (const f of e.target.files) { const fr = new FileReader();
+  fr.onload = () => { try { const plan = parseDXF(fr.result), room = plan.type === 'bath' ? '浴室' : 'キッチン'; window.PLANS[room] = plan;
+      planInfo[room] = `${f.name}（幅${(plan.W * 1000).toLocaleString()}×奥行${(plan.D * 1000).toLocaleString()}mm、天井${(plan.H.ceiling * 1000).toLocaleString()}mm）`;
+      dxfStatus(); if (window.rebuild3D) window.rebuild3D(); toast(`${room}の図面を読み込みました。STEP 3で3Dになります`); }
     catch (err) { $('#dxfSt').textContent = '読み込めませんでした：' + err.message; } };
-  fr.readAsText(f); });
+  fr.readAsText(f); } });
 $('#xls').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
   fr.onload = () => { try { PRICES = parsePriceBook(XLSX.read(fr.result, { type: 'array' })); const n = Object.values(PRICES).reduce((s, x) => s + x.length, 0);
       $('#xlsSt').textContent = `✓ ${f.name}（${Object.keys(PRICES).join('・')}　${n}プラン）`; renderPlans(); toast('価格表を読み込みました'); }
@@ -460,7 +469,7 @@ const STYLES = {
   A: { door: 0x4a3426, top: 0xc4c8cc, splash: 'tile', floor: 0xa47c56, cab: 0x4a3426 },
   B: { door: 0xcfae84, top: 0xc4c8cc, splash: 0xf7f7f4, floor: 0xa47c56, cab: 0xcfae84 },
   C: { door: 0xa89f93, top: 0xf2efe9, splash: 0xf7f7f4, floor: 0xc79d70, cab: 0xa89f93 } };
-let inited = false, scene, renderer, camera, controls, mats = {}, current = 'B', group;
+let inited = false, scene, renderer, camera, controls, mats = {}, current = 'B', group, kind = 'kitchen';
 function tileTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
   g.fillStyle = '#f3eee2'; g.fillRect(0, 0, 128, 128); g.strokeStyle = '#c9b48f'; g.lineWidth = 3;
@@ -473,7 +482,8 @@ function box(w, h, d, x, y, z, mat) { const m = new THREE.Mesh(new THREE.BoxGeom
 const std = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6, metalness: 0 }, o));
 function build(P) {
   if (group) { scene.remove(group); group.traverse(o => o.geometry && o.geometry.dispose()); }
-  group = new THREE.Group(); scene.add(group);
+  group = new THREE.Group(); scene.add(group); kind = P.type;
+  if (P.type === 'bath') return buildBath(P);
   W = P.W; D = P.D; H = P.H.ceiling; const ct = P.H.counter;
   mats.floor = std(0xa47c56, { roughness: .8 }); mats.wall = std(0xfaf8f3, { roughness: .9 });
   mats.tile = std(0xffffff, { map: tileTexture(), roughness: .5 }); mats.panel = std(0xf7f7f4, { roughness: .4 });
@@ -506,8 +516,55 @@ function build(P) {
   camera.position.set(MX(W * .53), 1.55, -1.1); controls.target.set(MX(W * .48), 1.0, D * .78); controls.update();
   set3D(current);
 }
+
+// ---- bathroom
+const BATH = {
+  A: { wall: 'mosaic', tub: 0x9fd0d4, floor: 0xb7c4cc, accent: null, dryer: true },
+  B: { wall: 0xeeeeec, tub: 0xfafafa, floor: 0xcfd3d6, accent: null, dryer: false },
+  C: { wall: 0xc9ccd0, tub: 0xf7f7f7, floor: 0xb9bec4, accent: 0x9b7653, dryer: true } };
+function mosaic() {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const cols = ['#f4f6f7', '#cfe2ec', '#e8eef1', '#b9d3e1'];
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { g.fillStyle = cols[(x * 3 + y * 5) % 4]; g.fillRect(x * 32, y * 32, 32, 32); }
+  g.strokeStyle = '#ffffff'; g.lineWidth = 2; for (let i = 0; i <= 128; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 128); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(128, i); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(W / .4, H / .4); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function buildBath(P) {
+  W = P.W; D = P.D; H = P.H.ceiling;
+  mats.bwall = std(0xffffff, { map: mosaic(), roughness: .35 }); mats.bpanel = std(0xeeeeec, { roughness: .35 }); mats.accent = std(0x9b7653, { roughness: .6 });
+  mats.tub = std(0x9fd0d4, { roughness: .25 }); mats.bfloor = std(0xb7c4cc, { roughness: .7 });
+  box(W, .02, D, 0, -.02, 0, mats.bfloor);
+  mats.walls = [box(.02, H, D, -.02, 0, 0, mats.bwall), box(W + .04, H, .02, -.02, 0, D, mats.bwall), box(.02, H, D, W, 0, 0, mats.bwall)];
+  mats.backWall = mats.walls[1];
+  box(W, .02, D, 0, H, 0, std(0xf4f5f5, { roughness: .9 }));   // ceiling
+  const T = P.tub;
+  if (T) { mats.tubMesh = box(T.w, P.H.tub, T.d, T.x, 0, T.z, mats.tub);
+    box(T.w - .12, .02, T.d - .12, T.x + .06, P.H.tub - .015, T.z + .06, std(0x7fb6c4, { roughness: .1, transparent: true, opacity: .85 })); }
+  const Wn = P.window;
+  if (Wn) { box(Wn.w + .06, P.H.winHeight + .06, .03, Wn.x - .03, P.H.winBottom - .03, D - .04, std(0xc6ccd2, { metalness: .5 }));
+    box(Wn.w, P.H.winHeight, .03, Wn.x, P.H.winBottom, D - .045, std(0xeef6ff, { roughness: .2, transparent: true, opacity: .8 })); }
+  const Fc = P.faucet;
+  if (Fc) { box(.06, .06, Fc.d, .0, P.H.faucet, Fc.z, std(0xd0d4d8, { metalness: .9, roughness: .2 }));
+    const sh = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .9, 10), std(0xd0d4d8, { metalness: .8, roughness: .2 })); sh.position.set(MX(.03), P.H.faucet + .6, Fc.z + Fc.d / 2); group.add(sh);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(.04, .03, .05, 16), std(0xf2f2f2)); head.position.set(MX(.06), P.H.faucet + 1.08, Fc.z + Fc.d / 2); head.rotation.z = Math.PI / 2; group.add(head); }
+  const Rm = P.remote; if (Rm) box(.02, .12, Rm.d, 0, P.H.remote, Rm.z, std(0xf3efe2));
+  const Dn = P.drain; if (Dn) box(Dn.w, .004, Dn.d, Dn.x, 0, Dn.z, std(0x9aa0a6, { metalness: .8 }));
+  const Dr = P.door;
+  if (Dr) { const len = Dr.z1 - Dr.z0; box(.04, P.H.door, len, Dr.side === 'right' ? W - .04 : 0, 0, Dr.z0, std(0xdfe6ea, { roughness: .4 })); }
+  // ceiling dryer (A, C) and handrails
+  mats.dryer = box(.5, .06, .4, W * .3, H - .06, D * .35, std(0xf0f2f3, { roughness: .4 }));
+  mats.rail1 = (() => { const r = new THREE.Mesh(new THREE.CylinderGeometry(.016, .016, .6, 12), std(0xc9a46a, { roughness: .4 })); r.position.set(MX(T ? T.x - .03 : .4), .95, T ? T.z + .3 : D / 2); group.add(r); return r; })();
+  camera.position.set(MX(W * .25), 1.65, -.9); controls.target.set(MX(W * .55), .9, D * .7); controls.update();
+  set3D(current);
+}
 function set3D(k) {
-  current = k; const s = STYLES[k]; if (!inited) return;
+  current = k; if (!inited) return;
+  if (kind === 'bath') { const b = BATH[k];
+    if (b.wall === 'mosaic') mats.walls.forEach(m => m.material = mats.bwall); else { mats.bpanel.color.setHex(b.wall); mats.walls.forEach(m => m.material = mats.bpanel); }
+    if (b.accent) { mats.accent.color.setHex(b.accent); mats.backWall.material = mats.accent; }
+    mats.tub.color.setHex(b.tub); mats.bfloor.color.setHex(b.floor); mats.dryer.visible = b.dryer;
+    document.querySelectorAll('#seg3 button').forEach(x => x.setAttribute('aria-pressed', x.dataset.k === k)); return; }
+  const s = STYLES[k];
   if (!mats.door) return; mats.door.color.setHex(s.door); mats.cab.color.setHex(s.cab); mats.top.color.setHex(s.top); mats.floor.color.setHex(s.floor);
   mats.top.metalness = k === 'C' ? .05 : .6; mats.top.roughness = k === 'C' ? .25 : .3;
   if (mats.splashMesh) { if (s.splash === 'tile') mats.splashMesh.material = mats.tile; else { mats.panel.color.setHex(s.splash); mats.splashMesh.material = mats.panel; } }
@@ -515,7 +572,9 @@ function set3D(k) {
 }
 function init3D() {
   const host = document.getElementById('three');
-  if (!window.PLAN) { host.querySelector('.hint').textContent = 'STEP 1で図面（DXF）を読み込むと、ここに3Dが出ます'; return; }
+  const P0 = window.PLANS[window.__room()];
+  if (!P0) { host.querySelector('.hint').textContent = 'STEP 1で図面（DXF）を読み込むと、ここに3Dが出ます'; if (inited) renderer.domElement.style.visibility = 'hidden'; return; }
+  if (inited) renderer.domElement.style.visibility = 'visible';
   host.querySelector('.hint').textContent = '指で回す・2本指で拡大縮小';
   if (inited) { resize(); return; }
   inited = true;
@@ -528,12 +587,13 @@ function init3D() {
   const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(1.5, 3.5, -1.5); scene.add(dl);
   const dl2 = new THREE.DirectionalLight(0xffffff, .5); dl2.position.set(-2, 2, 3); scene.add(dl2);
   controls.enableDamping = true; controls.minDistance = 1; controls.maxDistance = 7; controls.maxPolarAngle = Math.PI * .52;
-  build(window.PLAN); resize(); window.addEventListener('resize', resize);
+  build(P0); resize(); window.addEventListener('resize', resize);
   (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
 }
 function resize() { const host = document.getElementById('three'), w = host.clientWidth, h = host.clientHeight; if (!w) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 window.init3D = init3D; window.set3D = set3D;
-window.rebuild3D = () => { if (inited && window.PLAN) build(window.PLAN); };
+window.__room = () => (document.querySelector('#roomSeg button[aria-pressed=true]') || {}).dataset?.r || 'キッチン';
+window.rebuild3D = () => { const P = window.PLANS[window.__room()]; if (inited) { renderer.domElement.style.visibility = P ? 'visible' : 'hidden'; if (P) build(P); } };
 window.__snap = () => { if (!inited) return null; renderer.render(scene, camera); return renderer.domElement.toDataURL('image/jpeg', .85); };
 document.querySelectorAll('#seg3 button').forEach(b => b.addEventListener('click', () => { set3D(b.dataset.k); if (window.__pick) window.__pick(b.dataset.k); }));
 </script>
