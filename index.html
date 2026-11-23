@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>みやこ都市ガス 経営ダッシュボード（架空データ）</title>
+<style>
+:root{
+  --ink:#1A2B42; --ink2:#475467; --muted:#6B7480; --line:#DADFE5; --surface:#FFFFFF; --page:#F3F5F8; --tint:#EEF3F9;
+  --navy:#1E3A5F; --blue:#1F5FA8; --orange:#B4541A; --gray:#9AA3AE;
+  --pos1:#DCE8F5; --pos2:#8DB3DE; --pos3:#1F5FA8; --neg1:#F6DCCB; --neg2:#E39A6C; --neg3:#B4541A; --mid:#E9ECEF;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Meiryo",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:520px;margin:0 auto;padding:0 14px 40px}
+header{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;margin:0 -14px;padding:14px 18px 12px}
+header .co{font-size:12px;opacity:.85;letter-spacing:.04em}
+header h1{font-size:19px;margin:2px 0 6px;font-weight:700}
+header .meta{display:flex;gap:8px;align-items:center;font-size:12px}
+.badge{display:inline-block;background:#fff;color:var(--orange);font-weight:700;border-radius:999px;padding:2px 9px;font-size:11px}
+h2{font-size:15px;margin:22px 2px 8px;display:flex;align-items:center;gap:8px}
+h2 .sub{font-size:11px;color:var(--muted);font-weight:400}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+/* insights */
+.ins{display:flex;flex-direction:column;gap:10px}
+.ins .card{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+.ins .no{flex:none;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+.ins .lv{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-bottom:4px}
+.lv.warn{background:#FBE9DD;color:#8E3F12}
+.lv.good{background:#E1ECF8;color:#174A85}
+.ins .t{font-weight:700;font-size:14.5px;line-height:1.45}
+.ins .b{font-size:12.5px;color:var(--ink2);line-height:1.6;margin-top:3px}
+/* kpi */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi .l{font-size:12px;color:var(--ink2)}
+.kpi .v{font-size:24px;font-weight:700;margin:4px 0 2px;letter-spacing:-.01em}
+.kpi .v small{font-size:12px;font-weight:400;color:var(--ink2);margin-left:2px}
+.kpi .d{font-size:12px;color:var(--ink2)}
+.up{color:#174A85;font-weight:700} .down{color:#8E3F12;font-weight:700}
+/* segmented */
+.seg{display:flex;background:var(--tint);border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px 6px;font:inherit;font-size:12.5px;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed=true]{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+/* map */
+#map svg{width:100%;height:auto;display:block}
+#map,#inq{scroll-margin-top:96px}
+#map .dist{stroke:#fff;stroke-width:2.5;cursor:pointer;transition:opacity .15s}
+#map .dist.sel{stroke:var(--ink);stroke-width:3}
+#map text{font-size:11px;fill:var(--ink);pointer-events:none;font-weight:700}
+#map text.v{font-weight:400;font-size:10px}
+.legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:18px;height:10px;border-radius:2px}
+.detail{margin-top:10px;background:var(--tint);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.7;min-height:64px}
+.detail b{font-size:14px}
+.detail .row{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line)}
+.detail .row:last-child{border:0}
+/* charts */
+.chart{position:relative}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart .axis{font-size:10px;fill:var(--muted)}
+.chart .grid{stroke:#E6E9ED;stroke-width:1}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;border-radius:8px;padding:6px 9px;white-space:nowrap;transform:translate(-50%,-110%);opacity:0;transition:opacity .1s;line-height:1.5}
+.tip.on{opacity:1}
+.key{display:flex;gap:14px;font-size:11.5px;color:var(--ink2);margin:0 0 6px}
+.key span{display:inline-flex;align-items:center;gap:5px}
+.key i{display:inline-block;width:16px;height:3px;border-radius:2px}
+.note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6}
+/* bars */
+.hbar{display:grid;grid-template-columns:92px 1fr 54px;align-items:center;gap:8px;font-size:12.5px;padding:5px 0;cursor:default}
+.hbar .track{position:relative;height:14px;background:var(--tint);border-radius:4px}
+.hbar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.hbar .ref{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px dashed var(--ink2)}
+.hbar .num{text-align:right;font-variant-numeric:tabular-nums}
+.hbar .nm{white-space:nowrap}
+.flag{font-size:10px;font-weight:700;color:#8E3F12;margin-left:3px}
+details{margin-top:10px}
+summary{font-size:12px;color:var(--blue);cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink2);font-weight:700;background:var(--tint)}
+footer{font-size:11px;color:var(--muted);text-align:center;margin-top:26px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="co">みやこ都市ガス株式会社</div>
+  <h1>経営ダッシュボード</h1>
+  <div class="meta"><span id="asof"></span><span class="badge">デモ用の架空データ</span></div>
+</header>
+
+<h2>AIの気づき<span class="sub">タップで地図の該当地区へ</span></h2>
+<div class="ins" id="insights"></div>
+
+<h2>今月の数字</h2>
+<div class="kpis" id="kpis"></div>
+
+<h2>地区マップ<span class="sub">地区をタップ</span></h2>
+<div class="card" id="map">
+  <div class="seg" role="group" aria-label="地図の表示">
+    <button data-m="cust" aria-pressed="true">お客様数の前年比</button>
+    <button data-m="insp" aria-pressed="false">保安点検の計画比</button>
+  </div>
+  <div id="mapsvg"></div>
+  <div class="legend" id="maplegend"></div>
+  <div class="detail" id="mapdetail">地区をタップすると、詳しい数字が出ます。</div>
+</div>
+
+<h2>ガス販売量の推移<span class="sub">千m³・全社</span></h2>
+<div class="card">
+  <div class="key"><span><i style="background:var(--blue)"></i>今年（25年11月〜26年10月）</span><span><i style="background:var(--gray)"></i>前年</span></div>
+  <div class="chart" id="sales"></div>
+  <details><summary>表で見る</summary><div id="salestbl"></div></details>
+</div>
+
+<h2>保安点検の進み具合<span class="sub">計画比（点線＝計画どおり）</span></h2>
+<div class="card" id="insp"></div>
+
+<h2>お客様センターへの問い合わせ<span class="sub">10月・件数</span></h2>
+<div class="card">
+  <div id="inq"></div>
+  <div style="margin-top:14px;font-size:12.5px;font-weight:700">リフォーム相談の推移（件／月）</div>
+  <div class="chart" id="ref"></div>
+</div>
+
+<footer>このページの会社名・地区名・数値はすべて講演デモ用の架空データです。<br>実在の会社・地域とは関係ありません。</footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const P = {"asOf": "2026年10月末", "kpi": {"cust": 97789, "custYoY": 0.012318968105259787, "sales": 4306.3, "salesYoY": 0.007722369129244289, "net": 53, "net12": 1182, "inspProgress": 0.572382593709608, "inspVsPlan": 0.981227303502185}, "salesSeries": {"labels": ["11月", "12月", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月"], "thisYear": [5213.0, 6333.2, 7041.8, 6834.0, 6236.9, 5251.9, 4528.8, 4066.8, 3701.0, 3670.9, 3769.8, 4306.3], "lastYear": [5111.1, 6327.0, 7206.2, 7148.1, 6168.9, 5229.5, 4586.2, 4017.9, 3692.2, 3739.3, 3789.8, 4273.3]}, "districts": [{"name": "中央", "office": "中央営業所", "cust": 19928, "custYoY": 0.004739336492890933, "sales": 642.1, "salesYoY": 0.0020287141073658255, "netLast": -9, "net12": 94, "negStreak": 1, "inspTarget": 4640, "inspDone": 2715, "inspProgress": 0.5851293103448276, "inspVsPlan": 1.0030788177339902}, {"name": "北", "office": "中央営業所", "cust": 14885, "custYoY": 0.006491311109608544, "sales": 400.0, "salesYoY": -0.00024993751562119026, "netLast": 6, "net12": 87, "negStreak": 0, "inspTarget": 3570, "inspDone": 2126, "inspProgress": 0.5955182072829132, "inspVsPlan": 1.0208883553421368}, {"name": "南", "office": "南営業所", "cust": 13547, "custYoY": 0.003258535140339136, "sales": 1283.7, "salesYoY": -0.0339403973509933, "netLast": 0, "net12": 42, "negStreak": 0, "inspTarget": 3220, "inspDone": 1897, "inspProgress": 0.5891304347826087, "inspVsPlan": 1.0099378881987577}, {"name": "東", "office": "東営業所", "cust": 12184, "custYoY": 0.003211198023878037, "sales": 326.7, "salesYoY": -0.023902001792650118, "netLast": 6, "net12": 42, "negStreak": 0, "inspTarget": 2910, "inspDone": 1658, "inspProgress": 0.5697594501718213, "inspVsPlan": 0.9767304860088364}, {"name": "西", "office": "中央営業所", "cust": 14816, "custYoY": 0.009745791589995223, "sales": 1085.8, "salesYoY": 0.059523809523809534, "netLast": 9, "net12": 138, "negStreak": 0, "inspTarget": 3510, "inspDone": 2034, "inspProgress": 0.5794871794871795, "inspVsPlan": 0.9934065934065934}, {"name": "丘陵", "office": "東営業所", "cust": 8854, "custYoY": 0.016532721010332985, "sales": 217.2, "salesYoY": 0.03576537911301858, "netLast": 4, "net12": 138, "negStreak": 0, "inspTarget": 2140, "inspDone": 1193, "inspProgress": 0.5574766355140187, "inspVsPlan": 0.9556742323097464}, {"name": "湖畔", "office": "南営業所", "cust": 7007, "custYoY": -0.02409470752089138, "sales": 185.5, "salesYoY": -0.03485952133194581, "netLast": -20, "net12": -154, "negStreak": 8, "inspTarget": 1730, "inspDone": 1071, "inspProgress": 0.6190751445086705, "inspVsPlan": 1.061271676300578}, {"name": "新町", "office": "東営業所", "cust": 6568, "custYoY": 0.1392888117953166, "sales": 165.3, "salesYoY": 0.16244725738396637, "netLast": 57, "net12": 795, "negStreak": 0, "inspTarget": 1490, "inspDone": 591, "inspProgress": 0.39664429530201345, "inspVsPlan": 0.6799616490891659}], "inquiry": {"types": ["料金・お支払い", "引越し（開閉栓）", "機器の不具合", "ガス漏れの疑い", "リフォーム相談", "その他"], "last": [391, 289, 161, 19, 97, 102], "prev": [414, 279, 170, 29, 65, 92], "refTrend": [60, 55, 58, 58, 52, 57, 60, 54, 55, 54, 52, 65, 53, 63, 54, 64, 67, 70, 74, 79, 83, 86, 91, 97], "refLabels": ["24/11", "24/12", "25/01", "25/02", "25/03", "25/04", "25/05", "25/06", "25/07", "25/08", "25/09", "25/10", "25/11", "25/12", "26/01", "26/02", "26/03", "26/04", "26/05", "26/06", "26/07", "26/08", "26/09", "26/10"]}, "insights": [{"level": "注意", "title": "湖畔地区：閉栓が8か月連続で開栓を上回る", "body": "お客様数は前年比-2.4%（7,007件）。転居・空き家の動きを確認し、引き留めや機器更新の提案を検討。", "district": "湖畔"}, {"level": "注意", "title": "新町地区：保安点検が計画の68%", "body": "お客様数は前年比+13.9%と最も伸びている一方、点検が追いついていない（累計591件／対象1,490件）。人員配置の見直しを。", "district": "新町"}, {"level": "好機", "title": "リフォーム相談：10月は前年同月比+49%", "body": "10月は97件（前年同月65件）。4月から7か月連続で増加。提案の体制を整える好機。", "district": null}]};
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('ja-JP');
+const pct = (x, d = 1) => (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + '%';
+const cls = x => x >= 0 ? 'up' : 'down';
+const arrow = x => x >= 0 ? '▲' : '▼';
+$('#asof').textContent = P.asOf + '時点';
+
+// ---------- insights
+$('#insights').innerHTML = P.insights.map((x, i) => `
+  <div class="card" data-d="${x.district || ''}" role="button" tabindex="0">
+    <div class="no">${i + 1}</div>
+    <div><span class="lv ${x.level === '好機' ? 'good' : 'warn'}">${x.level === '好機' ? '★ 好機' : '! 注意'}</span>
+      <div class="t">${x.title}</div><div class="b">${x.body}</div></div>
+  </div>`).join('');
+document.querySelectorAll('.ins .card').forEach(c => c.addEventListener('click', () => {
+  const d = c.dataset.d;
+  if (d) { setMode(d === '新町' ? 'insp' : 'cust'); select(d); $('#map').scrollIntoView({behavior: 'smooth', block: 'start'}); }
+  else $('#inq').scrollIntoView({behavior: 'smooth', block: 'center'});
+}));
+
+// ---------- KPI
+const K = P.kpi;
+$('#kpis').innerHTML = [
+  ['お客様数', fmt(K.cust), '件', `前年比 <span class="${cls(K.custYoY)}">${arrow(K.custYoY)}${pct(K.custYoY)}</span>`],
+  ['ガス販売量（10月）', fmt(K.sales), '千m³', `前年同月比 <span class="${cls(K.salesYoY)}">${arrow(K.salesYoY)}${pct(K.salesYoY)}</span>`],
+  ['開栓−閉栓（10月）', (K.net >= 0 ? '+' : '') + fmt(K.net), '件', `直近12か月 ${K.net12 >= 0 ? '+' : ''}${fmt(K.net12)}件`],
+  ['保安点検の進捗', (K.inspProgress * 100).toFixed(1), '%', `計画比 <span class="${K.inspVsPlan >= 0.95 ? 'up' : 'down'}">${(K.inspVsPlan * 100).toFixed(0)}%</span>`],
+].map(([l, v, u, d]) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}<small>${u}</small></div><div class="d">${d}</div></div>`).join('');
+
+// ---------- map (fictional city)
+const SHAPES = {
+  '北': '90,20 230,15 240,95 150,105 95,90', '丘陵': '230,15 340,30 335,120 250,115 240,95',
+  '西': '20,80 95,90 150,105 140,175 30,170', '中央': '150,105 240,95 250,115 245,185 140,175',
+  '東': '250,115 335,120 340,200 245,185', '湖畔': '30,170 140,175 135,260 40,275 15,230',
+  '南': '140,175 245,185 240,270 135,260', '新町': '245,185 340,200 345,280 240,270'};
+const byName = Object.fromEntries(P.districts.map(d => [d.name, d]));
+let mode = 'cust', sel = null;
+function centroid(pts) { const p = pts.split(' ').map(s => s.split(',').map(Number)); return [p.reduce((a, b) => a + b[0], 0) / p.length, p.reduce((a, b) => a + b[1], 0) / p.length]; }
+function colorFor(d) {
+  if (mode === 'cust') { const v = d.custYoY; return v <= -0.015 ? 'var(--neg3)' : v < -0.003 ? 'var(--neg1)' : v < 0.008 ? 'var(--mid)' : v < 0.05 ? 'var(--pos2)' : 'var(--pos3)'; }
+  const v = d.inspVsPlan; return v < 0.85 ? 'var(--neg3)' : v < 0.97 ? 'var(--neg1)' : v < 1.03 ? 'var(--mid)' : 'var(--pos2)';
+}
+const valText = d => mode === 'cust' ? pct(d.custYoY) : (d.inspVsPlan * 100).toFixed(0) + '%';
+const darkFill = d => ['var(--neg3)', 'var(--pos3)'].includes(colorFor(d));
+function drawMap() {
+  let s = `<svg viewBox="-44 0 404 292" role="img" aria-label="架空の市の地区マップ">
+    <ellipse cx="-6" cy="240" rx="38" ry="48" fill="#CFE3F5"/><text x="-12" y="244" text-anchor="middle" style="font-size:10px;fill:#3F6E9E;font-weight:700">みやこ湖</text>`;
+  for (const [n, pts] of Object.entries(SHAPES)) {
+    const d = byName[n], [cx, cy] = centroid(pts), c = darkFill(d) ? '#fff' : 'var(--ink)';
+    s += `<polygon class="dist${sel === n ? ' sel' : ''}" data-n="${n}" points="${pts}" fill="${colorFor(d)}"><title>${n}地区 ${valText(d)}</title></polygon>
+      <text x="${cx}" y="${cy - 2}" text-anchor="middle" style="fill:${c}">${n}</text>
+      <text class="v" x="${cx}" y="${cy + 12}" text-anchor="middle" style="fill:${c}">${valText(d)}</text>`;
+  }
+  $('#mapsvg').innerHTML = s + '</svg>';
+  document.querySelectorAll('#map .dist').forEach(p => p.addEventListener('click', () => select(p.dataset.n)));
+  $('#maplegend').innerHTML = mode === 'cust'
+    ? `<i style="background:var(--neg3)"></i>減少 <i style="background:var(--neg1)"></i>やや減少 <i style="background:var(--mid)"></i>横ばい <i style="background:var(--pos2)"></i>増加 <i style="background:var(--pos3)"></i>大きく増加`
+    : `<i style="background:var(--neg3)"></i>85%未満（遅れ） <i style="background:var(--neg1)"></i>97%未満 <i style="background:var(--mid)"></i>計画どおり <i style="background:var(--pos2)"></i>先行`;
+}
+function select(n) {
+  sel = n; drawMap(); const d = byName[n];
+  $('#mapdetail').innerHTML = `<b>${n}地区</b>（${d.office}）
+    <div class="row"><span>お客様数</span><span>${fmt(d.cust)}件（前年比 <span class="${cls(d.custYoY)}">${pct(d.custYoY)}</span>）</span></div>
+    <div class="row"><span>開栓−閉栓（10月）</span><span>${d.netLast >= 0 ? '+' : ''}${d.netLast}件${d.negStreak >= 3 ? `<span class="flag">${d.negStreak}か月連続の減少</span>` : ''}</span></div>
+    <div class="row"><span>ガス販売量（10月）</span><span>${fmt(d.sales)}千m³（${pct(d.salesYoY)}）</span></div>
+    <div class="row"><span>保安点検</span><span>${fmt(d.inspDone)}／${fmt(d.inspTarget)}件（計画比 <span class="${d.inspVsPlan >= 0.95 ? 'up' : 'down'}">${(d.inspVsPlan * 100).toFixed(0)}%</span>）</span></div>`;
+}
+function setMode(m) { mode = m; document.querySelectorAll('#map .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m)); drawMap(); if (sel) select(sel); }
+document.querySelectorAll('#map .seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.m)));
+drawMap();
+
+// ---------- tooltip helper
+const tip = $('#tip');
+function showTip(html, x, y) { tip.innerHTML = html; tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.add('on'); }
+function hideTip() { tip.classList.remove('on'); }
+document.addEventListener('scroll', hideTip, {passive: true});
+
+// ---------- line chart: sales
+function lineChart(el, labels, series, opt = {}) {
+  const W = 340, H = opt.h || 190, L = 40, R = 10, T = 10, B = 24;
+  const all = series.flatMap(s => s.values), max = Math.ceil(Math.max(...all) / (opt.step || 1000)) * (opt.step || 1000), min = opt.min ?? 0;
+  const x = i => L + i * (W - L - R) / (labels.length - 1), y = v => T + (H - T - B) * (1 - (v - min) / (max - min));
+  let s = `<svg viewBox="0 0 ${W} ${H}">`;
+  const ticks = opt.ticks || 4;
+  for (let k = 0; k <= ticks; k++) { const v = min + (max - min) * k / ticks; s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${fmt(Math.round(v))}</text>`; }
+  labels.forEach((l, i) => { if (i % (opt.every || 2) === 0 || i === labels.length - 1) s += `<text class="axis" x="${x(i)}" y="${H - 6}" text-anchor="middle">${l}</text>`; });
+  series.forEach(se => {
+    s += `<polyline fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${se.values.map((v, i) => x(i) + ',' + y(v)).join(' ')}"/>`;
+    if (se.end) { const i = se.values.length - 1; s += `<circle cx="${x(i)}" cy="${y(se.values[i])}" r="4" fill="${se.color}" stroke="#fff" stroke-width="2"/>`; }
+  });
+  s += `<line id="${el.id}-cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink2)" stroke-width="1" opacity="0"/>`;
+  s += `<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" class="hit"/></svg>`;
+  el.innerHTML = s;
+  const svg = el.querySelector('svg'), cross = el.querySelector(`#${el.id}-cross`);
+  const move = ev => {
+    const p = (ev.touches ? ev.touches[0] : ev), r = svg.getBoundingClientRect();
+    const sx = (p.clientX - r.left) / r.width * W, i = Math.max(0, Math.min(labels.length - 1, Math.round((sx - L) / ((W - L - R) / (labels.length - 1)))));
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', .5);
+    const er = el.getBoundingClientRect();
+    showTip(`<b>${labels[i]}</b><br>` + series.map(se => `${se.name} ${fmt(se.values[i])}${opt.unit || ''}`).join('<br>') + (opt.extra ? opt.extra(i) : ''),
+      er.left + window.scrollX + x(i) / W * er.width, er.top + window.scrollY + y(Math.max(...series.map(se => se.values[i]))) / H * er.height);
+  };
+  svg.addEventListener('pointermove', move); svg.addEventListener('pointerdown', move);
+  svg.addEventListener('pointerleave', () => { hideTip(); cross.setAttribute('opacity', 0); });
+}
+const S = P.salesSeries;
+lineChart($('#sales'), S.labels, [
+  {name: '前年', values: S.lastYear, color: 'var(--gray)'},
+  {name: '今年', values: S.thisYear, color: 'var(--blue)', end: true}], {unit: '千m³', step: 1000, every: 2,
+  extra: i => `<br>前年比 ${pct(S.thisYear[i] / S.lastYear[i] - 1)}`});
+$('#salestbl').innerHTML = `<table><tr><th>月</th><th>今年</th><th>前年</th><th>前年比</th></tr>` +
+  S.labels.map((l, i) => `<tr><td>${l}</td><td>${fmt(S.thisYear[i])}</td><td>${fmt(S.lastYear[i])}</td><td>${pct(S.thisYear[i] / S.lastYear[i] - 1)}</td></tr>`).join('') + '</table>';
+
+// ---------- inspection bars
+const maxV = 1.15;
+$('#insp').innerHTML = [...P.districts].sort((a, b) => a.inspVsPlan - b.inspVsPlan).map(d => `
+  <div class="hbar" title="${d.name}地区 ${fmt(d.inspDone)}／${fmt(d.inspTarget)}件">
+    <span class="nm">${d.name}地区${d.inspVsPlan < 0.85 ? '<span class="flag">遅れ</span>' : ''}</span>
+    <span class="track"><span class="fill" style="width:${Math.min(d.inspVsPlan, maxV) / maxV * 100}%;background:${d.inspVsPlan < 0.85 ? 'var(--orange)' : 'var(--navy)'}"></span><span class="ref" style="left:${1 / maxV * 100}%"></span></span>
+    <span class="num">${(d.inspVsPlan * 100).toFixed(0)}%</span>
+  </div>`).join('') + `<div class="note">計画比＝累計完了件数÷（年度の対象件数×7/12）。年度の対象を12か月で均等に点検する前提。</div>`;
+
+// ---------- inquiries
+const I = P.inquiry, imax = Math.max(...I.last);
+$('#inq').innerHTML = I.types.map((t, k) => {
+  const r = I.last[k] / I.prev[k] - 1, hi = t === 'リフォーム相談';
+  return `<div class="hbar" style="grid-template-columns:112px 1fr 92px">
+    <span class="nm" style="${hi ? 'font-weight:700' : ''}">${t}</span>
+    <span class="track"><span class="fill" style="width:${I.last[k] / imax * 100}%;background:${hi ? 'var(--orange)' : 'var(--navy)'}"></span></span>
+    <span class="num">${fmt(I.last[k])}件 <span style="font-size:10.5px;color:var(--ink2);${hi ? 'font-weight:700;color:var(--ink)' : ''}">${pct(r, 0)}</span></span></div>`;
+}).join('') + `<div class="note">右の％は前年同月比。</div>`;
+lineChart($('#ref'), I.refLabels, [{name: 'リフォーム相談', values: I.refTrend, color: 'var(--orange)', end: true}],
+  {unit: '件', step: 20, every: 4, h: 150, ticks: 5});
+</script>
+</body>
+</html>
