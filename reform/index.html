@@ -104,6 +104,8 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
   #proposal{border:0;padding:0;max-width:none}
   @page{size:A4;margin:12mm}
 }
+.big.orange{background:#B4541A;color:#fff;border-color:#B4541A}
+.sample-card{border:2px solid #B4541A}
 </style>
 </head>
 <body>
@@ -124,6 +126,11 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
 <main>
 <!-- STEP 1 -->
 <section class="pane on" id="p1">
+  <div class="card sample-card" style="margin-bottom:14px">
+    <h2>まずは見本で試してみる</h2>
+    <p class="sub">架空のお客様宅（キッチン・浴室）の写真・図面・価格表を読み込みます。読み込んだら、STEP 2〜4を順に押してみてください。</p>
+    <button class="big orange" id="sampleBtn">🧪 見本データで試す</button> <span class="sub" id="sampleSt"></span>
+  </div>
   <div class="row">
     <div class="card grow">
       <h2>どこをリフォームしますか</h2>
@@ -193,7 +200,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
 </section>
 </main>
 
-<footer>会社名・商品・価格はすべて講演デモ用の架空データです。完成イメージは画像生成AI（Gemini）で作成したイメージです。<br>版：2026-11-23（キッチン・浴室対応）</footer>
+<footer>会社名・商品・価格はすべて講演デモ用の架空データです。完成イメージは画像生成AI（Gemini）で作成したイメージです。<br>版：2026-11-28（見本データ付き・キッチン・浴室対応）</footer>
 
 <dialog id="dlg">
   <h2 style="margin-top:0">設定</h2>
@@ -329,7 +336,7 @@ $('#saveSet').addEventListener('click', () => { store.set('gemini_key', $('#key'
 
 // ---------- room
 document.querySelectorAll('#roomSeg button').forEach(b => b.addEventListener('click', () => {
-  S.room = b.dataset.r; document.querySelectorAll('#roomSeg button').forEach(x => x.setAttribute('aria-pressed', x === b)); renderPlans(); renderCompare(); if (window.rebuild3D) window.rebuild3D();
+  S.room = b.dataset.r; if (S.samples) { S.before = S.samples[S.room]; $('#beforeBox').innerHTML = `<img src="${S.before}" alt="リフォーム前の写真">`; $('#toStep2').disabled = false; } document.querySelectorAll('#roomSeg button').forEach(x => x.setAttribute('aria-pressed', x === b)); renderPlans(); renderCompare(); if (window.rebuild3D) window.rebuild3D();
 }));
 
 // ---------- photo (downscaled to max 1600px)
@@ -340,7 +347,7 @@ function readPhoto(file) {
     const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
     c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    S.before = c.toDataURL('image/jpeg', 0.9); S.beforeMime = 'image/jpeg';
+    S.before = c.toDataURL('image/jpeg', 0.9); S.beforeMime = 'image/jpeg'; S.samples = null;
     S.after = { キッチン: {}, 浴室: {} };
     $('#beforeBox').innerHTML = `<img src="${S.before}" alt="リフォーム前の写真">`;
     $('#toStep2').disabled = false; URL.revokeObjectURL(url); renderPlans(); renderCompare();
@@ -354,6 +361,10 @@ $('#file').addEventListener('change', e => readPhoto(e.target.files[0]));
 async function generate(code) {
   const key = store.get('gemini_key'), model = store.get('gemini_model') || DEFAULT_MODEL;
   if (!S.before) { toast('先にSTEP 1で写真を撮ってください'); go('p1'); return; }
+  if (!key && S.samples) {
+    if (SAMPLE_AFTER[S.room][code]) { S.after[S.room][code] = SAMPLE_AFTER[S.room][code]; S.sel = code; renderPlans(); renderCompare(); toast('見本では、あらかじめAIで作った完成イメージを表示しています', 4500); return; }
+    toast('見本では、AIで完成イメージを作る機能はお休みしています（講演の画面でお見せします）。STEP 3の3Dと、STEP 4の提案書は試せます', 6500); return;
+  }
   if (!key) { toast('「設定」でGeminiのAPIキーを入れてください'); $('#openSet').click(); return; }
   const room = S.room; S.busy[room + code] = true; renderPlans();
   const body = { contents: [{ role: 'user', parts: [{ text: COMMON + PROMPTS[room][code] }, { inline_data: { mime_type: S.beforeMime, data: S.before.split(',')[1] } }] }],
@@ -453,6 +464,31 @@ $('#xls').addEventListener('change', e => { const f = e.target.files[0]; if (!f)
       $('#xlsSt').textContent = `✓ ${f.name}（${Object.keys(PRICES).join('・')}　${n}プラン）`; renderPlans(); toast('価格表を読み込みました'); }
     catch (err) { $('#xlsSt').textContent = '読み込めませんでした：' + err.message; } };
   fr.readAsArrayBuffer(f); });
+// ---- sample data (for the audience to try on their phones)
+const SAMPLE_AFTER = { キッチン: {}, 浴室: {} };
+async function blobToDataURL(b) { return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); }); }
+$('#sampleBtn').addEventListener('click', async () => {
+  const st = $('#sampleSt'); st.textContent = '読み込んでいます…';
+  try {
+    const get = async (u, how) => { const r = await fetch('./sample/' + u, { cache: 'no-cache' }); if (!r.ok) throw new Error(u + ' がありません'); return r[how](); };
+    const [kj, bj, kd, bd, xl] = await Promise.all([get('before_kitchen.jpg', 'blob'), get('before_bath.jpg', 'blob'), get('kitchen.dxf', 'text'), get('bath.dxf', 'text'), get('price.xlsx', 'arrayBuffer')]);
+    S.samples = { キッチン: await blobToDataURL(kj), 浴室: await blobToDataURL(bj) }; S.beforeMime = 'image/jpeg';
+    S.after = { キッチン: {}, 浴室: {} };
+    for (const [txt, nm] of [[kd, 'キッチン平面図.dxf'], [bd, '浴室平面図.dxf']]) {
+      const plan = parseDXF(txt), room = plan.type === 'bath' ? '浴室' : 'キッチン'; window.PLANS[room] = plan;
+      planInfo[room] = `${nm}（幅${(plan.W * 1000).toLocaleString()}×奥行${(plan.D * 1000).toLocaleString()}mm、天井${(plan.H.ceiling * 1000).toLocaleString()}mm）`;
+    }
+    dxfStatus();
+    PRICES = parsePriceBook(XLSX.read(xl, { type: 'array' })); const n = Object.values(PRICES).reduce((s, x) => s + x.length, 0);
+    $('#xlsSt').textContent = `✓ 価格表.xlsx（${Object.keys(PRICES).join('・')}　${n}プラン）`;
+    for (const r of ['キッチン', '浴室']) for (const c of ['A', 'B', 'C']) {
+      try { const res = await fetch(`./sample/after_${r === 'キッチン' ? 'kitchen' : 'bath'}_${c}.jpg`, { cache: 'no-cache' }); if (res.ok) SAMPLE_AFTER[r][c] = await blobToDataURL(await res.blob()); } catch (e) {}
+    }
+    S.before = S.samples[S.room]; $('#beforeBox').innerHTML = `<img src="${S.before}" alt="リフォーム前の写真">`; $('#toStep2').disabled = false;
+    if (window.rebuild3D) window.rebuild3D(); renderPlans(); renderCompare();
+    st.textContent = '✓ 読み込みました（キッチン・浴室の写真、図面2枚、価格表）'; toast('見本データを読み込みました。STEP 2へどうぞ');
+  } catch (e) { st.textContent = '読み込めませんでした：' + e.message; }
+});
 window.__pick = k => { S.sel = k; renderPlans(); renderCompare(); };
 $('#print').addEventListener('click', () => { renderProposal(); setTimeout(() => window.print(), 300); });
 
