@@ -405,7 +405,7 @@ function renderPlans() {
       <div class="thumb">${busy ? '<div><div class="spin"></div>AIが描いています…</div>' : img ? `<img src="${img}" alt="プラン${p.code}の完成イメージ">` : 'まだイメージがありません'}</div>
       <div class="meta">${p.total ? `工期の目安 ${p.days}／合計 ${man(p.total)}（税込）` : '価格表を読み込むと、金額と工期が出ます'}</div>
       <div class="acts"><button class="gen" data-g="${p.code}" ${busy ? 'disabled' : ''}>${img ? 'もう一度つくる' : 'イメージをつくる'}</button><button class="pick" data-s="${p.code}">${S.sel === p.code ? '選択中' : 'このプラン'}</button></div>
-      <button class="load" data-l="${p.code}">用意した画像を使う</button>
+      <button class="load" data-l="${p.code}">用意した画像を使う</button>${img && !busy ? `<a class="load" style="text-align:center;text-decoration:none" download="after_${S.room === 'キッチン' ? 'kitchen' : 'bath'}_${p.code}.jpg" href="${img}">この画像を保存</a>` : ''}
     </div>`;
   }).join('');
   document.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => generate(b.dataset.g)));
@@ -484,6 +484,7 @@ $('#sampleBtn').addEventListener('click', async () => {
     for (const r of ['キッチン', '浴室']) for (const c of ['A', 'B', 'C']) {
       try { const res = await fetch(`./sample/after_${r === 'キッチン' ? 'kitchen' : 'bath'}_${c}.jpg`, { cache: 'no-cache' }); if (res.ok) SAMPLE_AFTER[r][c] = await blobToDataURL(await res.blob()); } catch (e) {}
     }
+    for (const r of ['キッチン', '浴室']) Object.assign(S.after[r], SAMPLE_AFTER[r]);
     S.before = S.samples[S.room]; $('#beforeBox').innerHTML = `<img src="${S.before}" alt="リフォーム前の写真">`; $('#toStep2').disabled = false;
     if (window.rebuild3D) window.rebuild3D(); renderPlans(); renderCompare();
     st.textContent = '✓ 読み込みました（キッチン・浴室の写真、図面2枚、価格表）'; toast('見本データを読み込みました。STEP 2へどうぞ');
