@@ -106,6 +106,7 @@ footer{text-align:center;font-size:11px;color:var(--muted);line-height:1.7;paddi
 }
 .big.orange{background:#B4541A;color:#fff;border-color:#B4541A}
 .sample-card{border:2px solid #B4541A}
+@media (max-width:520px){header{gap:8px;padding:10px 12px}header .co{font-size:11px;white-space:nowrap}header h1{font-size:16px;white-space:nowrap}}@media (max-width:420px){header .badge{display:none}}@media (max-width:520px){header .badge{font-size:10px;padding:3px 8px;white-space:nowrap}#openSet{padding:6px 10px;white-space:nowrap}}
 </style>
 </head>
 <body>
@@ -363,7 +364,7 @@ async function generate(code) {
   if (!S.before) { toast('先にSTEP 1で写真を撮ってください'); go('p1'); return; }
   if (!key && S.samples) {
     if (SAMPLE_AFTER[S.room][code]) { S.after[S.room][code] = SAMPLE_AFTER[S.room][code]; S.sel = code; renderPlans(); renderCompare(); toast('見本では、あらかじめAIで作った完成イメージを表示しています', 4500); return; }
-    toast('見本では、AIで完成イメージを作る機能はお休みしています（講演の画面でお見せします）。STEP 3の3Dと、STEP 4の提案書は試せます', 6500); return;
+    toast('完成イメージをAIで作るには、Gemini APIキーが必要です。キーをお持ちの方は「設定」から入れてください', 6000); $('#openSet').click(); return;
   }
   if (!key) { toast('「設定」でGeminiのAPIキーを入れてください'); $('#openSet').click(); return; }
   const room = S.room; S.busy[room + code] = true; renderPlans();
